@@ -101,6 +101,7 @@ ELSE()
 		-Wno-class-memaccess\
 		-Wno-invalid-offsetof\
 		-Wno-mismatched-new-delete\
+		-Wno-nonnull\
 		-Wno-nonnull-compare\
 		-Wno-pragmas\
 		-Wno-uninitialized\
