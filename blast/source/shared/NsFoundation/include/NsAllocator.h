@@ -35,7 +35,11 @@
 
 #if(NV_WINDOWS_FAMILY || NV_WINRT || NV_X360 || NV_XBOXONE)
 #include <exception>
+#if(_MSC_VER >= 1923)
+#include <typeinfo>
+#else
 #include <typeinfo.h>
+#endif
 #endif
 #if(NV_APPLE_FAMILY)
 #include <typeinfo>

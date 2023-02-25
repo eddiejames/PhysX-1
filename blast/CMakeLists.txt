@@ -57,7 +57,7 @@ set(NVBLAST_TASK_DIR "${NVBLAST_SHARED_DIR}/NvTask/include")
 set(NVBLAST_TOOLKIT_DIR "${NVBLAST_SDK_DIR}/toolkit")
 set(NVBLAST_TOOLKIT_INC_DIR "${NVBLAST_INC_DIR}/toolkit")
 
-file(GLOB_RECURSE NVBLAST_INSTALL_HDRS ${NVBLAST_INC_DIR})
+file(GLOB_RECURSE NVBLAST_INSTALL_HDRS ${NVBLAST_INC_DIR}/*.h)
 
 include_directories(
 	${NVBLAST_COMMON_DIR}
@@ -154,7 +154,7 @@ set(NVBLAST_FOUNDATION_EXTRA_HDRS
 )
 
 
-set(NVBLAST_HDRS
+set(NVBLAST_INT_HDRS
 	"${NVBLAST_FOUNDATION_HDRS}"
 	"${NVBLAST_COMMON_DIR}/NvBlastArray.h"
 	"${NVBLAST_COMMON_DIR}/NvBlastAssert.h"
@@ -182,6 +182,22 @@ set(NVBLAST_HDRS
 	"${NVBLAST_GLOBALS_INC_DIR}/NvBlastDebugRender.h"
 	"${NVBLAST_GLOBALS_INC_DIR}/NvBlastGlobals.h"
 	"${NVBLAST_GLOBALS_INC_DIR}/NvCMath.h"
+)
+
+set(NVBLAST_INT_SRCS
+	"${NVBLAST_COMMON_DIR}/NvBlastAssert.cpp"
+	"${NVBLAST_COMMON_DIR}/NvBlastAtomic.cpp"
+	"${NVBLAST_COMMON_DIR}/NvBlastTime.cpp"
+	"${NVBLAST_COMMON_DIR}/NvBlastTimers.cpp"
+	"${NVBLAST_GLOBALS_DIR}/NvBlastGlobals.cpp"
+	"${NVBLAST_GLOBALS_DIR}/NvBlastInternalProfiler.cpp"
+)
+
+add_library(NvBlastInternal STATIC ${NVBLAST_INT_SRCS} ${NVBLAST_INT_HDRS})
+
+
+set(NVBLAST_HDRS
+	"${NVBLAST_FOUNDATION_HDRS}"
 	"${NVBLAST_LOWLEVEL_DIR}/NvBlastActor.h"
 	"${NVBLAST_LOWLEVEL_DIR}/NvBlastActorSerializationBlock.h"
 	"${NVBLAST_LOWLEVEL_DIR}/NvBlastAsset.h"
@@ -194,12 +210,6 @@ set(NVBLAST_HDRS
 )
 
 set(NVBLAST_SRCS
-	"${NVBLAST_COMMON_DIR}/NvBlastAssert.cpp"
-	"${NVBLAST_COMMON_DIR}/NvBlastAtomic.cpp"
-	"${NVBLAST_COMMON_DIR}/NvBlastTime.cpp"
-	"${NVBLAST_COMMON_DIR}/NvBlastTimers.cpp"
-	"${NVBLAST_GLOBALS_DIR}/NvBlastGlobals.cpp"
-	"${NVBLAST_GLOBALS_DIR}/NvBlastInternalProfiler.cpp"
 	"${NVBLAST_LOWLEVEL_DIR}/NvBlastActor.cpp"
 	"${NVBLAST_LOWLEVEL_DIR}/NvBlastActorSerializationBlock.cpp"
 	"${NVBLAST_LOWLEVEL_DIR}/NvBlastAsset.cpp"
@@ -213,6 +223,8 @@ if (PHYSXBLAST_STATIC)
 else()
 	add_library(NvBlast SHARED ${NVBLAST_SRCS} ${NVBLAST_HDRS})
 endif()
+
+target_link_libraries(NvBlast PRIVATE NvBlastInternal)
 
 
 set(NVBLAST_TK_HDRS
@@ -261,7 +273,11 @@ else()
 	add_library(NvBlastTk SHARED ${NVBLAST_TK_SRCS} ${NVBLAST_TK_HDRS})
 endif()
 
-target_link_libraries(NvBlastTk NvBlast)
+if(WIN32)
+	target_link_libraries(NvBlastTk PUBLIC NvBlast PUBLIC Rpcrt4 PRIVATE NvBlastInternal)
+else()
+	target_link_libraries(NvBlastTk PUBLIC NvBlast PRIVATE NvBlastInternal)
+endif()
 
 target_include_directories(NvBlastTk PRIVATE
 	${NVBLAST_FILEBUFFER_DIR}
@@ -286,7 +302,7 @@ else()
 	add_library(NvBlastExtAssetUtils SHARED ${NVBLAST_EXT_ASSETUTILS_SRCS} ${NVBLAST_EXT_ASSETUTILS_HDRS})
 endif()
 
-target_link_libraries(NvBlastExtAssetUtils NvBlast)
+target_link_libraries(NvBlastExtAssetUtils PUBLIC NvBlast PRIVATE NvBlastInternal)
 
 target_include_directories(NvBlastExtAssetUtils PRIVATE ${NVBLAST_EXTENSIONS_ASSETUTILS_INC_DIR})
 
@@ -380,7 +396,7 @@ else()
 	add_library(NvBlastExtAuthoring SHARED ${NVBLAST_EXT_AUTHORING_SRCS} ${NVBLAST_EXT_AUTHORING_HDRS})
 endif()
 
-target_link_libraries(NvBlastExtAuthoring NvBlast)
+target_link_libraries(NvBlastExtAuthoring PUBLIC NvBlast PRIVATE NvBlastInternal)
 
 target_include_directories(NvBlastExtAuthoring PRIVATE
 	${Boost_INCLUDE_DIR}
@@ -400,9 +416,35 @@ set(NVBLAST_DTO_DIR "${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/DTO")
 capnp_generate_cpp(NVBLAST_EXT_SERIALIZATION_GEN_SRCS NVBLAST_EXT_SERIALIZATION_GEN_HDRS "${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtLlSerialization-capn")
 get_filename_component(NVBLAST_EXT_SERIALIZATION_GEN_INC ${NVBLAST_EXT_SERIALIZATION_GEN_HDRS} DIRECTORY)
 
-set(NVBLAST_EXT_SERIALIZATION_HDRS
+set(NVBLAST_EXT_SERIALIZATION_INT_HDRS
 	"${NVBLAST_FOUNDATION_EXTRA_HDRS}"
 	"${NVBLAST_EXT_SERIALIZATION_GEN_HDRS}"
+	"${NVBLAST_DTO_DIR}/AssetDTO.h"
+	"${NVBLAST_DTO_DIR}/NvBlastBondDTO.h"
+	"${NVBLAST_DTO_DIR}/NvBlastChunkDTO.h"
+	"${NVBLAST_DTO_DIR}/NvBlastIDDTO.h"
+)
+
+set(NVBLAST_EXT_SERIALIZATION_INT_SRCS
+	"${NVBLAST_EXT_SERIALIZATION_GEN_SRCS}"
+	"${NVBLAST_DTO_DIR}/AssetDTO.cpp"
+	"${NVBLAST_DTO_DIR}/NvBlastBondDTO.cpp"
+	"${NVBLAST_DTO_DIR}/NvBlastChunkDTO.cpp"
+	"${NVBLAST_DTO_DIR}/NvBlastIDDTO.cpp"
+)
+
+add_library(NvBlastExtSerializationInternal STATIC ${NVBLAST_EXT_SERIALIZATION_INT_SRCS} ${NVBLAST_EXT_SERIALIZATION_INT_HDRS})
+
+target_link_directories(NvBlastExtSerializationInternal PRIVATE CapnProto::capnp)
+
+target_include_directories(NvBlastExtSerializationInternal PRIVATE
+	PRIVATE $<TARGET_PROPERTY:CapnProto::capnp,INTERFACE_INCLUDE_DIRECTORIES>
+	${NVBLAST_DTO_DIR}
+	${NVBLAST_EXT_SERIALIZATION_GEN_INC}
+)
+
+set(NVBLAST_EXT_SERIALIZATION_HDRS
+	"${NVBLAST_FOUNDATION_EXTRA_HDRS}"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtInputStream.h"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtLlSerializerCAPN.h"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtOutputStream.h"
@@ -411,28 +453,19 @@ set(NVBLAST_EXT_SERIALIZATION_HDRS
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_INC_DIR}/NvBlastExtLlSerialization.h"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_INC_DIR}/NvBlastExtSerialization.h"
 	"${NVBLAST_DTO_DIR}/ActorDTO.h"
-	"${NVBLAST_DTO_DIR}/AssetDTO.h"
 	"${NVBLAST_DTO_DIR}/DTOMacros.h"
 	"${NVBLAST_DTO_DIR}/FamilyDTO.h"
 	"${NVBLAST_DTO_DIR}/FamilyGraphDTO.h"
-	"${NVBLAST_DTO_DIR}/NvBlastBondDTO.h"
-	"${NVBLAST_DTO_DIR}/NvBlastChunkDTO.h"
-	"${NVBLAST_DTO_DIR}/NvBlastIDDTO.h"
 )
 
 set(NVBLAST_EXT_SERIALIZATION_SRCS
-	"${NVBLAST_EXT_SERIALIZATION_GEN_SRCS}"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtInputStream.cpp"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtLlSerialization.cpp"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtOutputStream.cpp"
 	"${NVBLAST_EXTENSIONS_SERIALIZATION_DIR}/NvBlastExtSerialization.cpp"
 	"${NVBLAST_DTO_DIR}/ActorDTO.cpp"
-	"${NVBLAST_DTO_DIR}/AssetDTO.cpp"
 	"${NVBLAST_DTO_DIR}/FamilyDTO.cpp"
 	"${NVBLAST_DTO_DIR}/FamilyGraphDTO.cpp"
-	"${NVBLAST_DTO_DIR}/NvBlastBondDTO.cpp"
-	"${NVBLAST_DTO_DIR}/NvBlastChunkDTO.cpp"
-	"${NVBLAST_DTO_DIR}/NvBlastIDDTO.cpp"
 )
 
 if (PHYSXBLAST_STATIC)
@@ -441,7 +474,7 @@ else()
 	add_library(NvBlastExtSerialization SHARED ${NVBLAST_EXT_SERIALIZATION_SRCS} ${NVBLAST_EXT_SERIALIZATION_HDRS})
 endif()
 
-target_link_libraries(NvBlastExtSerialization PUBLIC NvBlast PRIVATE CapnProto::capnp)
+target_link_libraries(NvBlastExtSerialization PUBLIC NvBlast PRIVATE NvBlastExtSerializationInternal PRIVATE CapnProto::capnp PRIVATE NvBlastInternal)
 
 target_include_directories(NvBlastExtSerialization PRIVATE
 	${NVBLAST_DTO_DIR}
@@ -488,7 +521,7 @@ else()
 	add_library(NvBlastExtTkSerialization SHARED ${NVBLAST_EXT_TK_SERIALIZATION_SRCS} ${NVBLAST_EXT_TK_SERIALIZATION_HDRS})
 endif()
 
-target_link_libraries(NvBlastExtTkSerialization PUBLIC NvBlast PUBLIC NvBlastTk PUBLIC NvBlastExtSerialization PRIVATE CapnProto::capnp)
+target_link_libraries(NvBlastExtTkSerialization PUBLIC NvBlast PUBLIC NvBlastTk PUBLIC NvBlastExtSerialization PRIVATE NvBlastExtSerializationInternal PRIVATE CapnProto::capnp PRIVATE NvBlastInternal)
 
 target_include_directories(NvBlastExtTkSerialization PRIVATE
 	${NVBLAST_DTO_DIR}
@@ -521,7 +554,7 @@ else()
 	add_library(NvBlastExtShaders SHARED ${NVBLAST_EXT_SHADERS_SRCS} ${NVBLAST_EXT_SHADERS_HDRS})
 endif()
 
-target_link_libraries(NvBlastExtShaders NvBlast)
+target_link_libraries(NvBlastExtShaders PUBLIC NvBlast PRIVATE NvBlastInternal)
 
 target_include_directories(NvBlastExtShaders PRIVATE
 	${NVBLAST_EXTENSIONS_SHADERS_DIR}
@@ -557,7 +590,7 @@ else()
 	add_library(NvBlastExtStress SHARED ${NVBLAST_EXT_STRESS_SRCS} ${NVBLAST_EXT_STRESS_HDRS})
 endif()
 
-target_link_libraries(NvBlastExtStress NvBlast)
+target_link_libraries(NvBlastExtStress PUBLIC NvBlast PRIVATE NvBlastInternal)
 
 target_include_directories(NvBlastExtStress PRIVATE
 	${NVBLAST_EXTENSIONS_STRESS_DIR}
@@ -566,5 +599,5 @@ target_include_directories(NvBlastExtStress PRIVATE
 )
 
 install(TARGETS NvBlast NvBlastTk NvBlastExtAssetUtils NvBlastExtAuthoring NvBlastExtSerialization NvBlastExtTkSerialization NvBlastExtShaders NvBlastExtStress EXPORT NvBlastTargets)
-install(FILES ${NVBLAST_INSTALL_HDRS} TYPE INCLUDE)
+install(FILES ${NVBLAST_INSTALL_HDRS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} CONFIGURATIONS Release)
 install(EXPORT NvBlastTargets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/nvblast NAMESPACE NvBlast::)
